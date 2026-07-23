@@ -95,6 +95,15 @@ EOF
     # Will only be needed when transactional-update has successfully
     # done any package upgrades/updates.
     if [ -f /run/reboot-needed ]; then
+        # Disable firewalld if migrating to SLES (ID="sles")
+        # SLES 16.1 enables firewalld by default, which blocks RKE2 ports
+        # SL Micro has firewalld disabled, so we only need to disable it for SLES
+        if /usr/sbin/transactional-update --continue run sh -c 'grep -q "^ID=\"sles\"" /etc/os-release'; then
+            echo "Target OS is SLES - disabling firewalld in new snapshot..."
+            /usr/sbin/transactional-update --continue run systemctl disable firewalld.service || true
+            /usr/sbin/transactional-update --continue run systemctl mask firewalld.service || true
+        fi
+
         # Create a placeholder indicating that the os upgrade
         # has finished succesfully
         touch ${OS_UPGRADED_PLACEHOLDER_PATH}
